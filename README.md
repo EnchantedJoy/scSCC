@@ -2,7 +2,7 @@
 
 ## usage
 
-move the preprocessed data to the `XYData` fold, and then run with the following command:
+move the preprocessed data to the `XYData` fold, and then run the following command:
 
 ```shell
 python run.py -ds "Lung"
