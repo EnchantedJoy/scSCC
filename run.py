@@ -113,6 +113,8 @@ def main():
         args.kappa = 0.01
     else:
         args.kappa = 1.
+    if givenKappa != -1:
+        args.kappa = givenKappa + 0.0
     if givenKappa == 0:
         args.kappa = 0.0
         print("training without instance loss!")
