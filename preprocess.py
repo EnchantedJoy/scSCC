@@ -1,3 +1,6 @@
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
 import utils as utils
 import h5py
 import scipy as sp
@@ -62,13 +65,13 @@ def prepro(filename):
     return X, cell_label
 
 
-def normalize_(adata,
-               ifcopy=True,
-               highly_genes=None,
-               filter_min_counts=True,
-               size_factors=True,
-               normalize_input=True,
-               logtrans_input=True):
+def normalizeData(adata,
+              ifcopy=True,
+              highly_genes=None,
+              filter_min_counts=True,
+              size_factors=True,
+              normalize_input=True,
+              logtrans_input=True):
     if isinstance(adata, sc.AnnData):
         if ifcopy:
             adata = adata.copy()

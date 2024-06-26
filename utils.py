@@ -2,6 +2,7 @@ import numpy as np
 import os
 import torch
 from sklearn.metrics import adjusted_rand_score, normalized_mutual_info_score
+from sklearn.metrics import silhouette_score, davies_bouldin_score
 from sklearn.cluster import KMeans
 import time
 import math
@@ -77,9 +78,13 @@ def cluster_embedding(embedding, cluster_number, real_label, save_pred=False, cl
     if "KMeans" in cluster_methods:
         kmeans = KMeans(n_clusters=cluster_number, init="k-means++", random_state=0)
         pred = kmeans.fit_predict(embedding)
+        result[f"sc_pred"] = round(silhouette_score(embedding, pred), 4)
+        result[f"db_pred"] = round(davies_bouldin_score(embedding, pred), 4)
         if real_label is not None:
             result[f"ari"] = round(adjusted_rand_score(real_label, pred), 4)
             result[f"nmi"] = round(normalized_mutual_info_score(real_label, pred), 4)
+            result[f"sc_real"] = round(silhouette_score(embedding, real_label), 4)
+            result[f"db_real"] = round(davies_bouldin_score(embedding, real_label), 4)
         result["t_k"] = time.time()
         if save_pred:
             result[f"pred"] = pred

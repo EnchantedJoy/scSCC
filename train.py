@@ -8,6 +8,7 @@ import h5py
 import torch.nn as nn
 import torch.optim as optim
 from sklearn.metrics import adjusted_rand_score
+from tqdm import tqdm
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print("device: ", device)
@@ -49,8 +50,7 @@ def train(all_data,
           n_classes,
           lab_full=None,
           evaluate_training=True,
-          args=None,
-          protein_data=None):
+          args=None):
 
     kappa = args.kappa
     alpha = args.alpha
@@ -62,9 +62,6 @@ def train(all_data,
     z_dim = args.dim
     enc_dim = args.encoderDim
     headDim = args.headDim
-    protein_dim = None
-    if protein_data is not None:
-        protein_dim = args.protein_dim
     epochs = args.epochs
     preEpochs = args.preEpochs
     activation = args.activation
@@ -80,11 +77,8 @@ def train(all_data,
 
     # define autoencoder structure
     input_dim = all_data.shape[1]
-    lab_idx = None
-    if args.dataset.split("_")[-1] == "MM":
-        lab_idx = args.y_idx
 
-    model = swavContrastive(input_dim,
+    model = scSCC(input_dim,
                             z_dim,
                             headDim,
                             n_classes,
@@ -92,8 +86,7 @@ def train(all_data,
                             activation,
                             dropoutRate,
                             swav_temperature,
-                            enc_dim=enc_dim,
-                            proteinDim=protein_dim)
+                            enc_dim=enc_dim)
     model.to(device)
 
     # select optimizer, default to be adam
@@ -117,10 +110,10 @@ def train(all_data,
     max_value, best_model = -1, -1
     print("----- Traing phase -----")
 
-    ### ! ***** train with contrastive *******
+    ###  ***** train with contrastive *******
     idx = np.arange(len(all_data))
 
-    for epoch in range(epochs):
+    for epoch in tqdm(range(epochs)):
         # print("epoch", epoch)
         adjust_learning_rate(optimizer, epoch, lr)
         np.random.shuffle(idx)
@@ -141,14 +134,11 @@ def train(all_data,
 
             c_idx = idx[c_idx]
             c_inp = all_data[c_idx]
-            c_pro = None
-            if protein_data is not None:
-                c_pro = torch.FloatTensor(protein_data[c_idx]).to(device)
             input1 = torch.FloatTensor(c_inp).to(device)
-            inst1, p_1 = model(input1, c_pro)
+            inst1, p_1 = model(input1)
 
             input2 = torch.FloatTensor(c_inp).to(device)
-            inst2, p_2 = model(input2, c_pro)
+            inst2, p_2 = model(input2)
 
             feature_instance = torch.cat(
                 [inst1.unsqueeze(1), inst2.unsqueeze(1)], dim=1)
@@ -173,6 +163,14 @@ def train(all_data,
 
             batchLoss.backward()
             optimizer.step()
+        
+        # ####################
+        # if epoch % 10 == 0:
+        #     model.eval()
+        #     with torch.no_grad():
+        #         features = model.encoder(torch.FloatTensor(all_data).to(device))
+        #         np.save(f"./saveTemp/QSTrachea_epoch_{epoch}.npy", features.detach().cpu().numpy())
+        # #####################
 
         if evaluate_training and lab_full is not None and epoch >= preEpochs:
             model.eval()
@@ -182,23 +180,8 @@ def train(all_data,
                     torch.FloatTensor(all_data).to(device))
                 lab_pred = model.get_cluster(
                     torch.FloatTensor(all_data).to(device))                
-                # if protein_data is None:
-                #     features = model.encoder(
-                #         torch.FloatTensor(all_data).to(device))
-                #     lab_pred = model.get_cluster(
-                #         torch.FloatTensor(all_data).to(device))
-                # else:
-                #     features = model.encoder(
-                #         torch.FloatTensor(all_data).to(device),
-                #         torch.FloatTensor(protein_data).to(device))
-                #     lab_pred = model.get_cluster(
-                #         torch.FloatTensor(all_data).to(device),
-                #         torch.FloatTensor(protein_data).to(device))
                 features = features.detach().cpu().numpy()
                 lab_pred = lab_pred.detach().cpu().numpy()
-                if lab_idx is not None:
-                    features = features[lab_idx]
-                    lab_pred = lab_pred[lab_idx]
 
             res = cluster_embedding(features,
                                     n_classes,
@@ -236,14 +219,12 @@ def train(all_data,
     model.load_state_dict(torch.load(model_fp, map_location=device.type)['net'])
     model.to(device)
     with torch.no_grad():
-        if protein_data is not None:
-            features = model.encoder(
-                torch.FloatTensor(all_data).to(device),
-                torch.FloatTensor(protein_data).to(device))
-        else:
-            features = model.encoder(
+        features = model.encoder(
                 torch.FloatTensor(all_data).to(device))            
         features = features.detach().cpu().numpy()
+        if not os.path.exists("./scSCCFeatures"):
+            os.mkdir('./scSCCFeatures')
+        np.save(f"./scSCCFeatures/scSCC_{datasetName}.npy", features)
 
     return features, best_model
 

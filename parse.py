@@ -1,8 +1,7 @@
 import argparse
 
-
 def createParser():
-    parser = argparse.ArgumentParser(description="Training scSCC")
+    parser = argparse.ArgumentParser(description="Training netAE")
     # Training settings:
     parser.add_argument("-epath",
                         "--embd-path",
@@ -16,8 +15,8 @@ def createParser():
     parser.add_argument("-ds",
                         "--dataset",
                         type=str,
-                        default="Lung",
-                        help="name of the dataset (default: Lung)")
+                        default="QSTrachea",
+                        help="name of the dataset (default: QSTrachea)")
     parser.add_argument("-hvg",
                         "--highly_genes",
                         default=2000,
@@ -32,8 +31,8 @@ def createParser():
     parser.add_argument("-s",
                         "--seed",
                         type=int,
-                        default=-1,
-                        help="random seed for loading dataset (default: -1)")
+                        default=0,
+                        help="random seed for loading dataset (default: 0)")
 
     # Model parameters:
     parser.add_argument("-opt",
@@ -76,7 +75,7 @@ def createParser():
                         "--dropoutRate",
                         type=float,
                         default=0.9,
-                        help="dropout rate of augmentation.")
+                        help="dropout rate of augmentation (default: 0.9).")
 
     parser.add_argument("-eps",
                         "--epsilon",
@@ -92,12 +91,12 @@ def createParser():
                         "--alpha",
                         type=float,
                         default=0.1,
-                        help="weight for noise")
+                        help="ratio for noise (default: 0.1)")
     parser.add_argument("-kp",
                         "--kappa",
                         type=float,
                         default=-1,
-                        help="weight for instance loss")
+                        help="weight for instance loss (default: auto select)")
     parser.add_argument("-act",
                         "--activation",
                         type=str,

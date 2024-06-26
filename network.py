@@ -44,8 +44,8 @@ class GaussianNoise(nn.Module):
         return x + self.alpha * torch.randn_like(x)
 
 
-## ! main !!!!
-class swavContrastive(nn.Module):
+## =========== scSCC network =======
+class scSCC(nn.Module):
     def __init__(self,
                  input_dim,
                  z_dim,
@@ -56,9 +56,8 @@ class swavContrastive(nn.Module):
                  dropoutRate=0.9,
                  swavTemperature=0.1,
                  enc_dim=[],
-                 proteinDim=None,
                  dec_dim=[]):
-        super(swavContrastive, self).__init__()
+        super(scSCC, self).__init__()
 
         # network parameters
         self.input_dim = input_dim
@@ -76,14 +75,6 @@ class swavContrastive(nn.Module):
                                         type="encoder",
                                         activation=activation)
         self.fc_z = nn.Linear(enc_dim[-1], z_dim)
-        if proteinDim is not None:
-            ## - declare an encoder to extract protein features
-            self.proteinDim = proteinDim
-            self.encoder_pro = buildNetwork([self.proteinDim] + self.enc_dim,
-                                            1. - dropoutRate,
-                                            alpha,
-                                            type="encoder",
-                                            activation=activation)
         self.projectionHead = nn.Sequential(
             nn.Linear(z_dim, self.headDim), nn.ReLU(),
             nn.Linear(self.headDim, self.headDim))
@@ -93,16 +84,12 @@ class swavContrastive(nn.Module):
 
         # self._set_params()
 
-    def encoder(self, x, protein=None):
+    def encoder(self, x):
         h = self.enc_network(x)
-        if protein is not None:
-            ## - fuse the feature from mRNA and protein
-            h_protein = self.encoder_pro(protein)
-            h = h * h_protein
         return normalize(self.fc_z(h), dim=1)
 
-    def forward(self, x, protein=None):
-        z = self.encoder(x, protein)  ## normalized z
+    def forward(self, x):
+        z = self.encoder(x)  ## normalized z
         ## projection
         inst = normalize(self.projectionHead(z), dim=1)  ## h
 
@@ -110,8 +97,8 @@ class swavContrastive(nn.Module):
 
         return inst, score
 
-    def get_cluster(self, x, protein=None):
-        _, p = self.forward(x, protein)
+    def get_cluster(self, x):
+        _, p = self.forward(x)
         return torch.argmax(F.log_softmax(p / self.Temperature, dim=1), dim=1)
 
     def _set_params(self):
